@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, scrolledtext
 import os
+from filetypes import filetypes
 
 class CodeEditor(tk.Tk):
     def __init__(self):
@@ -37,7 +38,7 @@ class CodeEditor(tk.Tk):
     def open_file(self):
         if self.confirm_discard_changes():
             file_path = filedialog.askopenfilename(
-                filetypes=[("Text Files", "*.txt"), ("Python Files", "*.py"), ("All Files", "*.*")]
+                filetypes=filetypes
             )
             if file_path:
                 with open(file_path, 'r') as file:
@@ -56,7 +57,7 @@ class CodeEditor(tk.Tk):
     def save_file_as(self):
         file_path = filedialog.asksaveasfilename(
             defaultextension=".txt",
-            filetypes=[("Text Files", "*.txt"), ("Python Files", "*.py"), ("All Files", "*.*")]
+             filetypes=filetypes
         )
         if file_path:
             self.write_to_file(file_path)
