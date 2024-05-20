@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import scrolledtext
+from tkinter.ttk import Treeview
 from lib.file_ops.file_operations import new_file, open_file, save_file, save_file_as, exit_editor
 
 def create_menu(root, text_area, current_file):
@@ -21,14 +22,52 @@ def create_menu(root, text_area, current_file):
         # Ensure the app name appears correctly in the menu bar
         root.createcommand('tk::mac::ShowPreferences', lambda: None)
 
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Basic Code Editor")
     root.geometry("1440x1080")
 
-    # Text area
-    text_area = scrolledtext.ScrolledText(root, wrap=tk.WORD, undo=True)
+    # Main PanedWindow
+    main_pane = tk.PanedWindow(root, orient=tk.HORIZONTAL)
+    main_pane.pack(fill=tk.BOTH, expand=1)
+
+    # Left Frame for file and folder viewer
+    left_frame = tk.Frame(main_pane, width=300)
+    left_frame.pack(fill=tk.Y, expand=0)
+    main_pane.add(left_frame)
+
+    # Add Treeview for file and folder viewer
+    tree = Treeview(left_frame)
+    tree.pack(fill=tk.BOTH, expand=1)
+
+    # Middle PanedWindow for open files and text editor
+    middle_pane = tk.PanedWindow(main_pane, orient=tk.VERTICAL)
+    middle_pane.pack(fill=tk.BOTH, expand=1)
+    main_pane.add(middle_pane)
+
+    # Top Frame for open files
+    top_frame = tk.Frame(middle_pane, height=30)
+    top_frame.pack(fill=tk.X, expand=0)
+    middle_pane.add(top_frame)
+
+    # Add a label to simulate open files (you can replace this with your logic)
+    open_files_label = tk.Label(top_frame, text="Open Files: file1.txt, file2.py")
+    open_files_label.pack(side=tk.LEFT, padx=10)
+
+    # Text area for code editing
+    text_area = scrolledtext.ScrolledText(middle_pane, wrap=tk.WORD, undo=True)
     text_area.pack(fill=tk.BOTH, expand=1)
+    middle_pane.add(text_area)
+
+    # Bottom Frame for terminal/output area
+    bottom_frame = tk.Frame(middle_pane, height=150)
+    bottom_frame.pack(fill=tk.X, expand=0)
+    middle_pane.add(bottom_frame)
+
+    # Add a text area for terminal/output (you can replace this with your logic)
+    terminal_area = scrolledtext.ScrolledText(bottom_frame, wrap=tk.WORD, undo=True, height=8)
+    terminal_area.pack(fill=tk.BOTH, expand=1)
 
     # Current file path as a list to allow modifications within functions
     current_file = [None]
