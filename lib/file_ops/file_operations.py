@@ -55,3 +55,19 @@ def confirm_discard_changes(text_area, current_file):
 def exit_editor(root, text_area, current_file):
     if confirm_discard_changes(text_area, current_file):
         root.quit()
+
+def populate_tree(tree, node, path):
+    tree.delete(*tree.get_children(node))  # Clear current items in the tree
+    for item in os.listdir(path):
+        abs_path = os.path.join(path, item)
+        oid = tree.insert(node, 'end', text=item, open=False)
+        if os.path.isdir(abs_path):
+            populate_tree(tree, oid, abs_path)
+
+def open_folder(tree, folder_name_label):
+    folder_path = filedialog.askdirectory()
+    if folder_path:
+        folder_name_label.config(text=f"Opened Folder: {os.path.basename(folder_path)}")
+        for item in tree.get_children():
+            tree.delete(item)
+        populate_tree(tree, '', folder_path)
