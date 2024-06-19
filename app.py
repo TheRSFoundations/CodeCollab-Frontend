@@ -1,9 +1,10 @@
 import tkinter as tk
-import os
 from tkinter import scrolledtext, filedialog
 from tkinter.ttk import Treeview
+import subprocess
+import threading
+import os
 from lib.file_ops.file_operations import new_file, open_file, save_file, save_file_as, exit_editor, open_folder
-
 
 def create_menu(root, text_area, current_file):
     menu = tk.Menu(root)
@@ -32,7 +33,35 @@ def create_menu(root, text_area, current_file):
         # Ensure the app name appears correctly in the menu bar
         root.createcommand('tk::mac::ShowPreferences', lambda: None)
 
+class TerminalApp:
+    def __init__(self, terminal_area):
+        self.terminal_area = terminal_area
+        self.process = subprocess.Popen(['powershell'], 
+                                        stdin=subprocess.PIPE, 
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE, 
+                                        text=True, 
+                                        bufsize=1)
+        self.read_thread = threading.Thread(target=self.read_output)
+        self.read_thread.daemon = True
+        self.read_thread.start()
 
+    def read_output(self):
+        while True:
+            output = self.process.stdout.readline()
+            if output:
+                self.terminal_area.insert(tk.END, output)
+                self.terminal_area.see(tk.END)
+            else:
+                break
+
+    def enter_command(self, event):
+        command = self.terminal_area.get("end-2l", "end-1c").strip() + "\n"
+        self.process.stdin.write(command)
+        self.process.stdin.flush()
+        self.terminal_area.insert(tk.END, command)
+        self.terminal_area.see(tk.END)
+        return "break"
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -88,9 +117,13 @@ if __name__ == "__main__":
     terminal_label = tk.Label(bottom_frame, text="Terminal/Output")
     terminal_label.pack(anchor='w')
 
-    # Add a text area for terminal/output (you can replace this with your logic)
+    # Add a text area for terminal/output
     terminal_area = scrolledtext.ScrolledText(bottom_frame, wrap=tk.WORD, undo=True, height=8)
     terminal_area.pack(fill=tk.BOTH, expand=1)
+
+    # Initialize the TerminalApp
+    terminal_app = TerminalApp(terminal_area)
+    terminal_area.bind("<Return>", terminal_app.enter_command)
 
     # Current file path as a list to allow modifications within functions
     current_file = [None]
