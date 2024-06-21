@@ -5,11 +5,14 @@ import subprocess
 import threading
 import os
 from lib.file_ops.file_operations import new_file, open_file, save_file, save_file_as, exit_editor, open_folder
+from lib.file_ops.edit_operations import copy_line, paste_line, cut_line, redo_function, undo_function
+from lib.utils.check_system import check_system
 
 def create_menu(root, text_area, current_file):
     menu = tk.Menu(root)
     root.config(menu=menu)
 
+    #File Menu
     file_menu = tk.Menu(menu, tearoff=0)
     menu.add_cascade(label="File", menu=file_menu)
     file_menu.add_command(label="New File", command=lambda: new_file(
@@ -25,6 +28,17 @@ def create_menu(root, text_area, current_file):
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=lambda: exit_editor(
         root, text_area, current_file))
+    
+
+    # Edit Menu
+    edit_menu = tk.Menu(menu, tearoff=0)
+    menu.add_cascade(label="Edit", menu=edit_menu)
+    edit_menu.add_command(label="Copy", command=lambda: copy_line(text_area))
+    edit_menu.add_command(label="Cut", command=lambda: cut_line(text_area))
+    edit_menu.add_command(label="Paste", command=lambda: paste_line(text_area))
+    edit_menu.add_separator()
+    edit_menu.add_command(label="Undo", command=lambda: undo_function(text_area))
+    edit_menu.add_command(label="Redo", command=lambda: redo_function(text_area))
 
     # Additional platform-specific configuration for macOS
     if root.tk.call('tk', 'windowingsystem') == 'aqua':
@@ -34,14 +48,24 @@ def create_menu(root, text_area, current_file):
         root.createcommand('tk::mac::ShowPreferences', lambda: None)
 
 class TerminalApp:
-    def __init__(self, terminal_area):
+    def __init__(self, terminal_area, scrollbar):
         self.terminal_area = terminal_area
-        self.process = subprocess.Popen(['powershell'], 
-                                        stdin=subprocess.PIPE, 
-                                        stdout=subprocess.PIPE, 
-                                        stderr=subprocess.PIPE, 
-                                        text=True, 
-                                        bufsize=1)
+        self.scrollbar = scrollbar
+        self.terminal_area.bind("<Return>", self.enter_command)
+        self.command_queue = []
+        self.command_lock = threading.Lock()
+        
+        sys = check_system()
+        if sys == "Windows":
+            self.process = subprocess.Popen(['powershell'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                                            stderr=subprocess.PIPE, text=True, bufsize=1)
+        elif sys == "Darwin":
+            self.process = subprocess.Popen(['zsh'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                                            stderr=subprocess.PIPE, text=True, bufsize=1)
+        elif sys == "Linux":
+            self.process = subprocess.Popen(['bash'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, 
+                                            stderr=subprocess.PIPE, text=True, bufsize=1)
+
         self.read_thread = threading.Thread(target=self.read_output)
         self.read_thread.daemon = True
         self.read_thread.start()
@@ -52,6 +76,7 @@ class TerminalApp:
             if output:
                 self.terminal_area.insert(tk.END, output)
                 self.terminal_area.see(tk.END)
+                self.scrollbar.set(1.0, 1.0)  # Automatically scroll to the bottom
             else:
                 break
 
@@ -61,12 +86,15 @@ class TerminalApp:
         self.process.stdin.flush()
         self.terminal_area.insert(tk.END, command)
         self.terminal_area.see(tk.END)
+        self.scrollbar.set(1.0, 1.0)  # Automatically scroll to the bottom
         return "break"
 
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Basic Code Editor")
-    root.geometry("1440x1080")
+
+    # Set the application to maximize
+    root.state('zoomed')
 
     # Main PanedWindow
     main_pane = tk.PanedWindow(root, orient=tk.HORIZONTAL)
@@ -117,13 +145,22 @@ if __name__ == "__main__":
     terminal_label = tk.Label(bottom_frame, text="Terminal/Output")
     terminal_label.pack(anchor='w')
 
+    # Add a frame to hold terminal_area and its scrollbar
+    terminal_frame = tk.Frame(bottom_frame)
+    terminal_frame.pack(fill=tk.BOTH, expand=1)
+
+    # Add a scrollbar for the terminal/output
+    terminal_scrollbar = tk.Scrollbar(terminal_frame)
+    terminal_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
     # Add a text area for terminal/output
-    terminal_area = scrolledtext.ScrolledText(bottom_frame, wrap=tk.WORD, undo=True, height=8)
+    terminal_area = scrolledtext.ScrolledText(terminal_frame, wrap=tk.WORD, undo=True, height=8, yscrollcommand=terminal_scrollbar.set)
     terminal_area.pack(fill=tk.BOTH, expand=1)
 
+    terminal_scrollbar.config(command=terminal_area.yview)
+
     # Initialize the TerminalApp
-    terminal_app = TerminalApp(terminal_area)
-    terminal_area.bind("<Return>", terminal_app.enter_command)
+    terminal_app = TerminalApp(terminal_area, terminal_scrollbar)
 
     # Current file path as a list to allow modifications within functions
     current_file = [None]
@@ -131,3 +168,4 @@ if __name__ == "__main__":
     create_menu(root, text_area, current_file)
 
     root.mainloop()
+    
